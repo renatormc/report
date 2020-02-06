@@ -5,7 +5,6 @@ import sys
 import shutil
 import settings
 import parsers
-# from processor import Processor
 from processors import processor_factory, get_list_processors
 from models import *
 import models
@@ -18,12 +17,10 @@ from sinf.exe_finder import open_in_browser
 from subprocess import Popen, CREATE_NEW_CONSOLE
 from PyInquirer import style_from_dict, Token, prompt, Separator
 from processors.proprietary_finder import ProprietaryFinder
-# import multiprocessing
 from time import sleep
 from datetime import datetime
 import importlib
 import helpers_dblocal as hp_db
-# from multiprocessing import Pool, cpu_count
 import multiprocessing
 from contextlib import contextmanager
 from multiprocessing import Pool    
@@ -112,26 +109,6 @@ def init(grouped, dbtype):
     print("\nAmbiente preparado. Antes de processar não se esqueça de editar os arquivos \"config_source.yaml\" que se encontram dentro de cada pasta de fonte de dados.")
 
 
-# def process_worker(processes):
-#     read_source_id, parser = processes
-#     read_source = db_session.query(ReadSource).get(read_source_id)
-#     print(f"Iniciando processamento {read_source.folder}")
-#     hp.clear_read_source(read_source)
-#     parser.run()
-#     parser = None
-#     for item in config_manager.data['processors']:
-#         processor = processor_factory(item, read_source)
-#         processor.run()
-#     config_manager.set_process(read_source.folder, False)
-#     read_source.process = False
-#     db_session.add(read_source)
-#     db_session.commit()
-   
-# def process_worker(read_source_id):
-#     path = settings.app_dir / "process.py"
-#     os.system(f"s-py \"{path}\" {read_source_id}")
-
-
 @cli.command()
 def process():
     start_time = datetime.now()
@@ -164,19 +141,6 @@ def process():
         read_source.process = False
         db_session.add(read_source)
         db_session.commit()
-    # for process in processes:
-    #     read_source, parser = process
-       
-    #     hp.clear_read_source(read_source)
-    #     parser.run()
-    #     parser = None
-    #     for item in config_manager.data['processors']:
-    #         processor = processor_factory(item, read_source)
-    #         processor.run()
-    #     config_manager.set_process(read_source.folder, False)
-    #     read_source.process = False
-    #     db_session.add(read_source)
-    #     db_session.commit()
     delta = datetime.now() - start_time
     print(f"\nProcessamento finalizado. Tempo gasto: {delta}")
 
@@ -210,12 +174,6 @@ def update():
     hp.update_sources()
     process_avatars()
     
-
-@cli.command()
-def delete_unchecked():
-    p = processor_factory("DeleteUnchecked")
-    p.run()
-
 
 # @cli.command()
 # def portable():
@@ -292,22 +250,20 @@ def script(edit, search):
         print("Nenhum script com este nome foi encontrado")
 
 
-# @cli.command()
-# def avatar():
-#     for rs in db_session.query(ReadSource).distinct(ReadSource.folder):
-#         folder = os.path.abspath(rs.folder)
-#         object = Path(rs.folder).parent.name
-#         print(
-#             f"\nOBJETO {object} **************************************************")
-#         print("Para Android: ")
-#         cmd = f"execfile(r'{settings.sinftools_dir}\\tools\\ufed\\ufed.py');ufed.exportar_avatars(r'{folder}')"
-#         print(cmd)
-#         print("\nPara Iphone: ")
-#         cmd = f"execfile(r'{settings.sinftools_dir}\\tools\\ufed\\ufed.py');ufed.exportar_avatars_iphone(r'{folder}')"
-#         print(cmd)
+@cli.command(help="Generates command to be used inside Physical Analyzer to export avatars.")
+@click.option('--phone-type', type=click.Choice(['android', 'iphone']), default="android")
+def avatar(phone_type):
+    folder = Path(hp.choose_read_source())
+    print("Abra o shell de scripts python dentro do Physical Analyzer, e execute o comando abaixo: \n")
+    if phone_type == 'android':
+        cmd = f"execfile(r'{settings.sinftools_dir}\\tools\\ufed\\ufed.py');ufed.exportar_avatars(r'{folder.absolute()}')"
+        print(cmd)
+    elif phone_type == 'iphone':
+        cmd = f"execfile(r'{settings.sinftools_dir}\\tools\\ufed\\ufed.py');ufed.exportar_avatars_iphone(r'{folder.absolute()}')"
+        print(cmd)
 
 
-@cli.command()
+@cli.command(help="Open analyzer")
 @click.option('--new-window/--no-new-window', default=False)
 @click.option('--mode', default="waitress")
 def analyzer(mode, new_window):
@@ -339,6 +295,7 @@ def extra_process(processors):
         delta = datetime.now() - start_time
         print(f"Processamento finalizado. Tempo gasto: {delta}")
 
+
 @cli.command()
 @click.option('--name')
 @click.option('--username')
@@ -355,15 +312,18 @@ def create_user(name, username, password):
     print("Usuário criado.")
 
 @cli.command()
-@click.option('--tags', required=True)
+@click.option('--tags', required=True, help="Only items checked with tags especified here will be included. If more than one put them separated by comma.")
 @click.option('--item', type=click.Choice(['image', 'video', 'chat']), required=True)
-@click.option('--n_cols', type=int, default=3)
+@click.option('--n_cols', type=int, default=3, help="Number of images per row at the table")
 @click.option('--caption', default="Exemplo de mensagens de bate-papo")
 def word(tags, item, n_cols, caption):
     tags = [item.strip() for item in tags.split(",")]
     for tag in tags:
         if not db_session.query(Tag).filter_by(name=tag).count():
             print(f'Tag "{tag}" não existe.')
+            print("Escolha dentre as opções: \n")
+            for item in db_session.query(Tag.name).all():
+                print(item[0])
             return 
     wh = WordHandler()
     if item == 'image':
@@ -394,10 +354,9 @@ def list_users():
         print(user.username)
 
 
-@cli.command()
+@cli.command(help="Mark all read sources to process.")
 def mark_all_to_process():
     for rs in db_session.query(ReadSource).all():
-        print(rs.folder)
         config_manager.set_process(rs.folder, True)
 		
 @cli.command()

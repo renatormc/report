@@ -89,6 +89,25 @@ def show_options_cancel(message, options, cancel_option=False):
     return res['action']
 
 
+def choose_read_source():
+    items = db_session.query(ReadSource.folder).all()
+    if len(items) == 1:
+        return items[0][0]
+    options = [item[0] for item in items]
+    questions = [
+        {
+            'type': 'list',
+            'message': "Escolha a fonte de dados: ",
+            'name': 'rs',
+            'pageSize': 3,
+            'choices': options
+        }
+    ]
+    res = prompt(questions, style=style)
+    return res['rs']
+    
+
+
 def progress(count, total, suffix=''):
     bar_len = 60
     filled_len = int(round(bar_len * count / float(total)))
