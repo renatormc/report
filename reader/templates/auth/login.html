@@ -1,0 +1,47 @@
+{% extends 'base-clean.html' %}
+{% block content %}
+    <br>
+    <br>
+    <br>
+    <br>
+    <div class="container">
+      <div class="row">
+        <div class="col-md-6 col-md-offset-3">
+          <h3>Login</h3>
+        </div>
+      </div>
+        <div class="row">
+            <div class="col-md-6 col-md-offset-3">
+                 {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert {{ category }} alert-dismissable">
+                        <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+                        <strong>Mensagem!</strong> {{ message }}
+                    </div>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}                         
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 col-md-offset-3">
+                <form method="post" action="{{ url_for('auth.login') }}?next={% if next %}{{ next }}{%else%}{{ url_for('views.index') }}{%endif%}">
+                    <div class="form-group">
+                      <label for="user">Usuário</label>
+                      <input type="text" id="user" name="username" class="form-control" value="{{ user.username if user }}">
+                    </div>
+                    <div class="form-group">
+                      <label for="pwd">Senha:</label>
+                      <input type="password" name="password" class="form-control" id="pwd">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Logar</button>
+                  </form> 
+            </div>
+        </div>
+        <br>
+        <br>
+        
+    </div>
+{% endblock %}
